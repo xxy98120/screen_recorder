@@ -418,11 +418,19 @@ class AudioRecorder:
 
 
 def _find_ffmpeg() -> str | None:
-    """优先使用程序同目录的 ffmpeg.exe，其次使用系统 PATH。"""
-    app_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).parent
-    local_ffmpeg = app_dir / ("ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
-    if local_ffmpeg.exists():
-        return str(local_ffmpeg)
+    """优先使用 PyInstaller 内置/同目录 ffmpeg，其次使用系统 PATH。"""
+    exe_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    candidate_dirs = []
+    if getattr(sys, "frozen", False):
+        candidate_dirs.append(Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)))
+        candidate_dirs.append(Path(sys.executable).parent)
+    else:
+        candidate_dirs.append(Path(__file__).parent)
+
+    for directory in candidate_dirs:
+        ffmpeg = directory / exe_name
+        if ffmpeg.exists():
+            return str(ffmpeg)
     return shutil.which("ffmpeg")
 
 

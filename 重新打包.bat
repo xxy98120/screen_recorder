@@ -15,7 +15,14 @@ if exist "%APP_NAME%.spec" del /q "%APP_NAME%.spec"
 
 echo.
 echo [2/3] 开始打包...
-python -m PyInstaller --onefile --windowed --name "%APP_NAME%" --icon "icon.ico" --add-data "icon.ico;." --hidden-import sounddevice --hidden-import pyaudiowpatch --clean main.py
+call :find_ffmpeg
+if not defined FFMPEG_EXE (
+    echo [错误] 未找到 ffmpeg，无法打包单文件内置版。
+    echo 请先安装 ffmpeg 并加入 PATH。
+    pause
+    exit /b 1
+)
+python -m PyInstaller --onefile --windowed --name "%APP_NAME%" --icon "icon.ico" --add-data "icon.ico;." --add-binary "%FFMPEG_EXE%;." --hidden-import sounddevice --hidden-import pyaudiowpatch --clean main.py
 if errorlevel 1 (
     echo.
     echo [错误] 打包失败，请查看上面的错误信息。
@@ -25,7 +32,6 @@ if errorlevel 1 (
 
 echo.
 if exist "dist\%APP_NAME%.exe" (
-    call :copy_ffmpeg
     echo [3/3] 打包成功！
     echo 输出: dist\%APP_NAME%.exe
 ) else (
@@ -38,15 +44,9 @@ pause
 
 exit /b 0
 
-:copy_ffmpeg
+:find_ffmpeg
 set "FFMPEG_EXE="
 for /f "delims=" %%F in ('where ffmpeg 2^>nul') do (
     if not defined FFMPEG_EXE set "FFMPEG_EXE=%%F"
-)
-if defined FFMPEG_EXE (
-    copy /y "%FFMPEG_EXE%" "dist\ffmpeg.exe" >nul
-    echo 已复制 ffmpeg: dist\ffmpeg.exe
-) else (
-    echo [提示] 未找到 ffmpeg，发给别人时请把 ffmpeg.exe 放到 dist 目录。
 )
 exit /b 0

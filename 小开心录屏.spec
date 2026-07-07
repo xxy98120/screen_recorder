@@ -4,7 +4,7 @@
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=[('D:\\ffma\\ffmpeg-7.0.2-full_build\\bin\\ffmpeg.exe', '.')],
     datas=[('icon.ico', '.')],
     hiddenimports=['sounddevice', 'pyaudiowpatch'],
     hookspath=[],
