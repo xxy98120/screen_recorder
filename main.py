@@ -142,6 +142,10 @@ class RecorderWindow(QMainWindow):
 
     # 线程安全信号
     window_lost_signal = pyqtSignal()
+    engine_status_signal = pyqtSignal(str)
+    engine_frame_signal = pyqtSignal(float, int)
+    engine_error_signal = pyqtSignal(str)
+    recording_done_signal = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
@@ -154,6 +158,10 @@ class RecorderWindow(QMainWindow):
 
         # 线程安全：将信号连接到主线程的处理函数
         self.window_lost_signal.connect(self._on_window_lost_ui)
+        self.engine_status_signal.connect(self._on_engine_status)
+        self.engine_frame_signal.connect(self._on_engine_frame)
+        self.engine_error_signal.connect(self._on_engine_error)
+        self.recording_done_signal.connect(self._on_recording_done)
 
         # 定时器 - 更新UI
         self._ui_timer = QTimer(self)
@@ -280,6 +288,12 @@ class RecorderWindow(QMainWindow):
         title.setAlignment(Qt.AlignCenter)
         title.setFixedHeight(26)
         root_layout.addWidget(title)
+
+        author = QLabel("作者：小开心    QQ：9165599819")
+        author.setStyleSheet(f"font-size: 12px; color: {C_TEXT2.name()};")
+        author.setAlignment(Qt.AlignCenter)
+        author.setFixedHeight(18)
+        root_layout.addWidget(author)
 
         body_layout = QHBoxLayout()
         body_layout.setSpacing(12)
@@ -530,13 +544,13 @@ class RecorderWindow(QMainWindow):
         self._fps_slider.valueChanged.connect(self._on_fps_changed)
 
         # 录制引擎回调
-        self._engine.on_status_changed = self._on_engine_status
-        self._engine.on_frame_updated = self._on_engine_frame
-        self._engine.on_error = self._on_engine_error
+        self._engine.on_status_changed = self.engine_status_signal.emit
+        self._engine.on_frame_updated = self.engine_frame_signal.emit
+        self._engine.on_error = self.engine_error_signal.emit
         # 窗口丢失回调（线程安全：仅发射信号，不操作UI）
         self._engine.on_window_lost = self.window_lost_signal.emit
         # 录制完成回调
-        self._engine.on_recording_done = self._on_recording_done
+        self._engine.on_recording_done = self.recording_done_signal.emit
 
         # 显示器切换
         self._monitor_combo.currentIndexChanged.connect(
@@ -637,6 +651,7 @@ class RecorderWindow(QMainWindow):
             self._indicator.set_paused(True)
 
     def _on_stop(self):
+        self._status_label.setText("正在保存录制...")
         self._engine.stop_recording()
         self._recording = False
 
@@ -647,7 +662,8 @@ class RecorderWindow(QMainWindow):
         self._indicator.set_recording(False)
         self._indicator.set_paused(False)
         self._duration_label.setText("00:00")
-        self._status_label.setText("正在保存录制...")
+        if not self._engine.is_recording and self._engine.output_path:
+            self._status_label.setText(f"已保存: {self._engine.output_path.name}")
 
         # 恢复模式/来源切换
         self._mode_screen_radio.setEnabled(True)
